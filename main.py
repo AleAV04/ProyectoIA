@@ -1,11 +1,7 @@
 """
 main.py
-Corre los 3 agentes sobre los 25 laberintos del benchmark en 3 fases:
-  Fase 1: 10 laberintos 5x5
-  Fase 2: 10 laberintos 10x10
-  Fase 3: 5 laberintos 15x15
-
-Incluye un Score Compuesto (0-100) por fase y resumen final.
+Corre los 3 agentes en 3 fases segun tamaño de laberinto
+Al final muestra un resumen con Score Compuesto para comparar
 """
 
 import csv
@@ -17,16 +13,8 @@ from agentes   import bfs, astar, greedy
 from metricas  import medir
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# SCORE COMPUESTO  (siempre entre 0 y 100)
-#
-# Cada metrica se normaliza a [0,1] donde 1 = mejor, 0 = peor.
-# Luego se pondera:
-#   Exito   40%  — llega a la meta?
-#   Pasos   30%  — que tan corto es el camino?
-#   Nodos   20%  — cuantas celdas exploro?
-#   Tiempo  10%  — que tan rapido corrio?
-# ─────────────────────────────────────────────────────────────────────────────
+# Score Compuesto (0-100) Normaliza cada metrica al rango [0,1] donde 1 = mejor agente 
+# Pesos: exito 40%, pasos 30%, nodos 20%, tiempo 10%
 
 PESOS = {"exito": 0.40, "pasos": 0.30, "nodos": 0.20, "tiempo": 0.10}
 
@@ -39,11 +27,11 @@ def calcular_score_compuesto(resumen):
         "tiempo": {n: resumen[n]["promedio_tiempo_ms"]     for n in nombres},
     }
 
-    def norm_mayor(d):   # mayor = mejor (exito)
+    def norm_mayor(d):  # mas alto = mejor (exito)
         mn, mx = min(d.values()), max(d.values())
         return {k: 1.0 for k in d} if mx == mn else {k: (v-mn)/(mx-mn) for k,v in d.items()}
 
-    def norm_menor(d):   # menor = mejor (pasos, nodos, tiempo)
+    def norm_menor(d):  # mas bajo = mejor (pasos, nodos, tiempo)
         mn, mx = min(d.values()), max(d.values())
         return {k: 1.0 for k in d} if mx == mn else {k: (mx-v)/(mx-mn) for k,v in d.items()}
 
@@ -55,10 +43,6 @@ def calcular_score_compuesto(resumen):
     }
     return {n: round(sum(PESOS[m] * norm[m][n] for m in PESOS) * 100, 1) for n in nombres}
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# HELPERS
-# ─────────────────────────────────────────────────────────────────────────────
 
 def calcular_resumen(filas, agentes):
     resumen = {}
@@ -88,8 +72,8 @@ def ganador_o_empate(nombres, key_fn, menor_es_mejor=False):
 
 
 def imprimir_tabla(resumen, scores, titulo):
-    nombres  = ordenar_por_score(list(resumen.keys()), scores)
-    POSICIONES = ["1ro", "2do", "3ro"]
+    nombres = ordenar_por_score(list(resumen.keys()), scores)
+    posiciones = ["1ro", "2do", "3ro"]
     print(f"\n{'=' * 73}")
     print(f"  {titulo}")
     print(f"{'=' * 73}")
@@ -97,7 +81,7 @@ def imprimir_tabla(resumen, scores, titulo):
     print(f"  {'-' * 67}")
     for i, n in enumerate(nombres):
         d = resumen[n]
-        pos = POSICIONES[i] if i < 3 else "   "
+        pos = posiciones[i] if i < 3 else "   "
         print(f"  {pos}  {n:<8}  {d['tasa_exito_%']:>6.1f}%  "
               f"{d['promedio_pasos']:>7.1f}  "
               f"{d['promedio_tiempo_ms']:>11.4f}  "
@@ -110,19 +94,13 @@ def imprimir_tabla(resumen, scores, titulo):
 
 
 def imprimir_conclusion_final(resumen, scores, s1, s2, s3):
-    """
-    Un solo bloque al final que explica con numeros reales:
-    - quien gano en cada metrica
-    - por que nodos es enganosa en este benchmark
-    """
-    nombres  = list(resumen.keys())
+    nombres = list(resumen.keys())
     nombres_ord = ordenar_por_score(nombres, scores)
-    ganador  = nombres_ord[0]
+    ganador = nombres_ord[0]
 
     mejor_nodos = ganador_o_empate(nombres, lambda n: resumen[n]["promedio_nodos"], menor_es_mejor=True)
     mejor_score = ganador_o_empate(nombres, lambda n: scores[n])
 
-    # Datos concretos
     nodos_por_agente = {n: resumen[n]["promedio_nodos"] for n in nombres}
     exito_por_agente = {n: resumen[n]["tasa_exito_%"]   for n in nombres}
     pasos_por_agente = {n: resumen[n]["promedio_pasos"] for n in nombres}
@@ -134,7 +112,6 @@ def imprimir_conclusion_final(resumen, scores, s1, s2, s3):
     print("  CONCLUSION FINAL")
     print(f"{'=' * 65}")
 
-    # Tabla: quien gano en cada metrica
     print(f"\n  Ganador por metrica (25 laberintos en total):")
     print(f"  {'-' * 47}")
     print(f"  {'Metrica':<28}  {'Ganador':>15}")
@@ -147,7 +124,6 @@ def imprimir_conclusion_final(resumen, scores, s1, s2, s3):
     print(f"  {'Score Compuesto (0-100)':<28}  {mejor_score:>15}")
     print(f"  {'-' * 47}")
 
-    # Tabla completa de datos
     pasos_iguales = len(set(pasos_por_agente.values())) == 1
     diff_score    = scores[nombres_ord[0]] - scores[nombres_ord[-1]]
 
@@ -160,14 +136,13 @@ def imprimir_conclusion_final(resumen, scores, s1, s2, s3):
               f"{resumen[n]['promedio_tiempo_ms']:>12.4f}  "
               f"{scores[n]:>8.1f}")
 
-    # Argumento dinamico: detectar que metrica es enganosa segun los datos reales
+    # Explicacion de la metrica enganosa segun los datos reales
     print(f"\n  Metrica enganosa detectada en este benchmark:")
     print(f"  {'-' * 60}")
 
     ganador_exito = max(nombres, key=lambda n: exito_por_agente[n])
 
     if exitos_iguales and pasos_iguales:
-        # Exito y pasos empatan — tasa de exito es enganosa porque oculta diferencias reales
         print(f"  Tasa de exito: todos tienen {exito_val:.0f}%.")
         print(f"  Vista sola, sugiere que ningun agente es mejor que otro.")
         print(f"  Sin embargo, el Score Compuesto muestra {diff_score:.1f} puntos de diferencia")
@@ -175,21 +150,18 @@ def imprimir_conclusion_final(resumen, scores, s1, s2, s3):
         print(f"  -> La tasa de exito oculta diferencias reales de eficiencia.")
 
     elif exitos_iguales and not pasos_iguales:
-        # Exito empata pero pasos no — la tasa de exito no alcanza para decidir
         print(f"  Tasa de exito: todos tienen {exito_val:.0f}%, parece empate total.")
         print(f"  Pero los caminos tienen largo distinto — el Score captura")
         print(f"  esa diferencia de calidad que la tasa de exito no ve.")
         print(f"  -> Una metrica que empata no sirve para elegir.")
 
     elif not exitos_iguales and ganador_exito != ganador:
-        # Exito diferencia, pero el ganador en exito NO es el mejor en Score
         print(f"  {ganador_exito} tiene la mejor tasa de exito ({exito_por_agente[ganador_exito]:.0f}%),")
         print(f"  pero el Score Compuesto elige a {ganador} como mejor agente")
         print(f"  porque su eficiencia compensa la diferencia en llegadas.")
         print(f"  -> Optimizar solo exito puede ignorar la calidad real del agente.")
 
     else:
-        # Todas las metricas apuntan al mismo ganador — no hay contradiccion
         print(f"  En este benchmark todas las metricas apuntan al mismo ganador.")
         print(f"  El Score Compuesto confirma a {ganador} sin contradicciones.")
         print(f"  -> El valor del Score esta en que lo verifico matematicamente.")
@@ -206,10 +178,10 @@ def generar_grafica(resumen, scores, titulo, archivo):
     fig.suptitle(titulo, fontsize=13, fontweight="bold")
 
     metricas_graf = [
-        ("Tasa de exito (%)",                  [resumen[n]["tasa_exito_%"]   for n in nombres], "%",     105),
-        ("Promedio de pasos\n(menos = mejor)",  [resumen[n]["promedio_pasos"] for n in nombres], "Pasos", None),
-        ("Nodos explorados\n(metrica enganosa)",[resumen[n]["promedio_nodos"] for n in nombres], "Nodos", None),
-        ("Score Compuesto\n(0-100)",            [scores[n]                   for n in nombres], "Score", 105),
+        ("Tasa de exito (%)",                   [resumen[n]["tasa_exito_%"]   for n in nombres], "%",     105),
+        ("Promedio de pasos\n(menos = mejor)",   [resumen[n]["promedio_pasos"] for n in nombres], "Pasos", None),
+        ("Nodos explorados\n(metrica enganosa)", [resumen[n]["promedio_nodos"] for n in nombres], "Nodos", None),
+        ("Score Compuesto\n(0-100)",             [scores[n]                   for n in nombres], "Score", 105),
     ]
 
     for ax, (titulo_ax, vals, ylabel, ylim) in zip(axes, metricas_graf):
@@ -248,12 +220,8 @@ def correr_fase(labs, agentes, etiqueta):
 
 
 def esperar_usuario(msg):
-    input(f"\n  >>  {msg}\n     Presiona ENTER para continuar...")
+    input(f"\n  >>  {msg}\n      Presiona ENTER para continuar...")
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# MAIN
-# ─────────────────────────────────────────────────────────────────────────────
 
 def main():
     laberintos = crear_benchmark()
@@ -265,7 +233,7 @@ def main():
     agentes = {"BFS": bfs, "A*": astar, "Greedy": greedy}
     todas = []
 
-    # FASE 1
+    # Fase 1
     esperar_usuario("FASE 1 — 10 laberintos pequenos (5x5)")
     print("\n  Corriendo Fase 1...")
     f1 = correr_fase(fase1, agentes, "5x5")
@@ -275,7 +243,7 @@ def main():
     imprimir_tabla(r1, s1, "FASE 1 — Laberintos 5x5 (pequenos)")
     generar_grafica(r1, s1, "Fase 1: Laberintos 5x5", "grafica_fase1.png")
 
-    # FASE 2
+    # Fase 2
     esperar_usuario("FASE 2 — 10 laberintos medianos (10x10)")
     print("\n  Corriendo Fase 2...")
     f2 = correr_fase(fase2, agentes, "10x10")
@@ -285,7 +253,7 @@ def main():
     imprimir_tabla(r2, s2, "FASE 2 — Laberintos 10x10 (medianos)")
     generar_grafica(r2, s2, "Fase 2: Laberintos 10x10", "grafica_fase2.png")
 
-    # FASE 3
+    # Fase 3
     esperar_usuario("FASE 3 — 5 laberintos grandes (15x15)")
     print("\n  Corriendo Fase 3...")
     f3 = correr_fase(fase3, agentes, "15x15")
@@ -295,14 +263,14 @@ def main():
     imprimir_tabla(r3, s3, "FASE 3 — Laberintos 15x15 (grandes)")
     generar_grafica(r3, s3, "Fase 3: Laberintos 15x15", "grafica_fase3.png")
 
-    # RESUMEN FINAL
+    # Resumen final
     esperar_usuario("RESUMEN FINAL — todos los 25 laberintos")
     rf = calcular_resumen(todas, agentes)
     sf = calcular_score_compuesto(rf)
     imprimir_tabla(rf, sf, "RESUMEN FINAL — 25 laberintos")
     generar_grafica(rf, sf, "Resumen Final: 25 laberintos", "grafica_final.png")
 
-    # Scores por fase
+    # Evolucion por fase
     nombres_ord = ordenar_por_score(list(agentes.keys()), sf)
     print(f"\n{'=' * 57}")
     print("  SCORES POR FASE — evolucion del desempeno")
@@ -315,7 +283,6 @@ def main():
         print(f"  {n:<8}  {s1[n]:>8.1f}  {s2[n]:>8.1f}  {s3[n]:>8.1f}  {sf[n]:>8.1f}  {tend}")
     print(f"{'=' * 57}")
 
-    # Conclusion unica al final
     imprimir_conclusion_final(rf, sf, s1, s2, s3)
 
     # Guardar CSV

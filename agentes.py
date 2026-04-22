@@ -1,138 +1,132 @@
 """
 agentes.py
-Contiene tres agentes que resuelven laberintos:
-- BFS: garantiza el camino más corto
-- A*: usa heurística para buscar más inteligente
-- Greedy: solo mira la meta, no garantiza camino óptimo
+Estos son tres agentes que resuelven el laberinto
+Usamos BFS, A* y Greedy 
 """
 
 from collections import deque
 import heapq
 
 
-def obtener_vecinos(fila, col, grilla, filas, columnas):
-    """Devuelve las celdas adyacentes que no son pared."""
-    vecinos = []
-    for df, dc in [(-1,0), (1,0), (0,-1), (0,1)]:  # arriba, abajo, izq, der
-        nf, nc = fila + df, col + dc
-        if 0 <= nf < filas and 0 <= nc < columnas:
+def vecinos_validos(fila, col, grilla, filas, cols):
+    # devuelve las que no sean pared
+    resultado = []
+    for df, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
+        nf = fila + df
+        nc = col + dc
+        if 0 <= nf < filas and 0 <= nc < cols:
             if grilla[nf][nc] == 0:
-                vecinos.append((nf, nc))
-    return vecinos
+                resultado.append((nf, nc))
+    return resultado
 
 
 def reconstruir_camino(padres, meta):
-    """Reconstruye el camino desde inicio hasta meta usando el dict de padres."""
     camino = []
-    actual = meta
-    while actual is not None:
-        camino.append(actual)
-        actual = padres[actual]
-    return list(reversed(camino))
+    nodo = meta
+    while nodo is not None:
+        camino.append(nodo)
+        nodo = padres[nodo]
+    camino.reverse()
+    return camino
 
 
 
-# AGENTE 1: BFS (Búsqueda por amplitud)
-# Garantiza el camino más corto (menos pasos)
+# Agente 1 - BFS
 
 def bfs(laberinto):
-    grilla   = laberinto["grilla"]
-    filas    = laberinto["filas"]
-    columnas = laberinto["columnas"]
-    inicio   = laberinto["inicio"]
-    meta     = laberinto["meta"]
+    grilla = laberinto["grilla"]
+    filas = laberinto["filas"]
+    cols = laberinto["columnas"]
+    inicio = laberinto["inicio"]
+    meta = laberinto["meta"]
 
-    cola     = deque([inicio])
-    visitado = {inicio}
-    padres   = {inicio: None}
-    nodos_explorados = 0
+    cola = deque([inicio])
+    visitados = {inicio}
+    padres = {inicio: None}
+    explorados = 0
 
     while cola:
         actual = cola.popleft()
-        nodos_explorados += 1
+        explorados += 1
 
         if actual == meta:
             camino = reconstruir_camino(padres, meta)
-            return {"exito": True, "camino": camino, "nodos_explorados": nodos_explorados}
+            return {"exito": True, "camino": camino, "nodos_explorados": explorados}
 
-        for vecino in obtener_vecinos(*actual, grilla, filas, columnas):
-            if vecino not in visitado:
-                visitado.add(vecino)
-                padres[vecino] = actual
-                cola.append(vecino)
+        for v in vecinos_validos(*actual, grilla, filas, cols):
+            if v not in visitados:
+                visitados.add(v)
+                padres[v] = actual
+                cola.append(v)
 
-    return {"exito": False, "camino": [], "nodos_explorados": nodos_explorados}
+    return {"exito": False, "camino": [], "nodos_explorados": explorados}
 
 
 
-# AGENTE 2: A* (A estrella)
-# Usa heurística Manhattan para guiar la búsqueda
 
-def heuristica(a, b):
-    """Distancia Manhattan entre dos celdas."""
+# Agente 2 - A* usa distancia Manhattan como heuristica
+
+def manhattan(a, b):
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 def astar(laberinto):
-    grilla   = laberinto["grilla"]
-    filas    = laberinto["filas"]
-    columnas = laberinto["columnas"]
-    inicio   = laberinto["inicio"]
-    meta     = laberinto["meta"]
+    grilla = laberinto["grilla"]
+    filas = laberinto["filas"]
+    cols = laberinto["columnas"]
+    inicio = laberinto["inicio"]
+    meta = laberinto["meta"]
 
-    # (f_score, celda)
-    heap = [(heuristica(inicio, meta), inicio)]
-    padres  = {inicio: None}
-    g_score = {inicio: 0}
-    nodos_explorados = 0
+    heap = [(manhattan(inicio, meta), inicio)]
+    padres = {inicio: None}
+    costo_g = {inicio: 0}
+    explorados = 0
 
     while heap:
         _, actual = heapq.heappop(heap)
-        nodos_explorados += 1
+        explorados += 1
 
         if actual == meta:
             camino = reconstruir_camino(padres, meta)
-            return {"exito": True, "camino": camino, "nodos_explorados": nodos_explorados}
+            return {"exito": True, "camino": camino, "nodos_explorados": explorados}
 
-        for vecino in obtener_vecinos(*actual, grilla, filas, columnas):
-            nuevo_g = g_score[actual] + 1
-            if vecino not in g_score or nuevo_g < g_score[vecino]:
-                g_score[vecino] = nuevo_g
-                f = nuevo_g + heuristica(vecino, meta)
-                heapq.heappush(heap, (f, vecino))
-                padres[vecino] = actual
+        for v in vecinos_validos(*actual, grilla, filas, cols):
+            nuevo_g = costo_g[actual] + 1
+            if v not in costo_g or nuevo_g < costo_g[v]:
+                costo_g[v] = nuevo_g
+                f = nuevo_g + manhattan(v, meta)
+                heapq.heappush(heap, (f, v))
+                padres[v] = actual
 
-    return {"exito": False, "camino": [], "nodos_explorados": nodos_explorados}
+    return {"exito": False, "camino": [], "nodos_explorados": explorados}
 
 
 
-# AGENTE 3: Greedy (Avaro)
-# Solo mira qué tan cerca está de la meta
-# Rápido pero NO garantiza el camino más corto
+# Agente 3 - Greedy
 
 def greedy(laberinto):
-    grilla   = laberinto["grilla"]
-    filas    = laberinto["filas"]
-    columnas = laberinto["columnas"]
-    inicio   = laberinto["inicio"]
-    meta     = laberinto["meta"]
+    grilla = laberinto["grilla"]
+    filas = laberinto["filas"]
+    cols = laberinto["columnas"]
+    inicio = laberinto["inicio"]
+    meta = laberinto["meta"]
 
-    heap = [(heuristica(inicio, meta), inicio)]
-    padres   = {inicio: None}
-    visitado = {inicio}
-    nodos_explorados = 0
+    heap = [(manhattan(inicio, meta), inicio)]
+    padres = {inicio: None}
+    visitados = {inicio}
+    explorados = 0
 
     while heap:
         _, actual = heapq.heappop(heap)
-        nodos_explorados += 1
+        explorados += 1
 
         if actual == meta:
             camino = reconstruir_camino(padres, meta)
-            return {"exito": True, "camino": camino, "nodos_explorados": nodos_explorados}
+            return {"exito": True, "camino": camino, "nodos_explorados": explorados}
 
-        for vecino in obtener_vecinos(*actual, grilla, filas, columnas):
-            if vecino not in visitado:
-                visitado.add(vecino)
-                padres[vecino] = actual
-                heapq.heappush(heap, (heuristica(vecino, meta), vecino))
+        for v in vecinos_validos(*actual, grilla, filas, cols):
+            if v not in visitados:
+                visitados.add(v)
+                padres[v] = actual
+                heapq.heappush(heap, (manhattan(v, meta), v))
 
-    return {"exito": False, "camino": [], "nodos_explorados": nodos_explorados}
+    return {"exito": False, "camino": [], "nodos_explorados": explorados}

@@ -1,58 +1,54 @@
 """
 benchmark.py
-Genera 25 laberintos reproducibles con distintos tamaños y dificultades.
+Genera los laberintos para el benchmark. Usamos semillas fijas para que sea reproducible
 """
 
 import random
 
-def generar_laberinto(filas, columnas, semilla):
+
+def generar_laberinto(filas, cols, semilla):
     """
-    Genera un laberinto como grilla 2D.
-    0 = camino libre
-    1 = pared
-    El inicio siempre es (0,0) y la meta es (filas-1, columnas-1).
+    El 30% de paredes. 0 = libre, 1 = pared
+    Inicio en (0,0), meta en la esquina opuesta.
     """
     random.seed(semilla)
 
-    # Empezamos con todo libre
-    grilla = [[0] * columnas for _ in range(filas)]
+    grilla = [[0]*cols for _ in range(filas)]
 
-    # Ponemos paredes aleatoriamente (30% del laberinto)
     for f in range(filas):
-        for c in range(columnas):
-            if (f, c) == (0, 0) or (f, c) == (filas-1, columnas-1):
-                continue  # inicio y meta siempre libres
+        for c in range(cols):
+            if (f, c) in [(0,0), (filas-1, cols-1)]:
+                continue
             if random.random() < 0.30:
                 grilla[f][c] = 1
 
     return {
-        "id": semilla,
-        "filas": filas,
-        "columnas": columnas,
-        "grilla": grilla,
-        "inicio": (0, 0),
-        "meta": (filas - 1, columnas - 1)
+        "id":       semilla,
+        "filas":    filas,
+        "columnas": cols,
+        "grilla":   grilla,
+        "inicio":   (0, 0),
+        "meta":     (filas-1, cols-1)
     }
 
 
 def crear_benchmark():
     """
-    Crea 25 laberintos con variedad de tamaños.
-    Pequeños (5x5), medianos (10x10) y grandes (15x15).
+    25 laberintos:
+    - 10 pequeños  (5x5)
+    - 10 medianos  (10x10)
+    - 5  grandes   (15x15)
     """
     instancias = []
 
-    # 10 laberintos pequeños (fáciles)
     for i in range(10):
-        instancias.append(generar_laberinto(5, 5, semilla=100 + i))
+        instancias.append(generar_laberinto(5, 5, semilla=100+i))
 
-    # 10 laberintos medianos
     for i in range(10):
-        instancias.append(generar_laberinto(10, 10, semilla=200 + i))
+        instancias.append(generar_laberinto(10, 10, semilla=200+i))
 
-    # 5 laberintos grandes (difíciles)
     for i in range(5):
-        instancias.append(generar_laberinto(15, 15, semilla=300 + i))
+        instancias.append(generar_laberinto(15, 15, semilla=300+i))
 
     print(f"Benchmark creado: {len(instancias)} laberintos")
     return instancias

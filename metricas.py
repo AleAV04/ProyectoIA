@@ -1,31 +1,24 @@
 """
 metricas.py
-Mide el desempeño de cada agente en cada laberinto.
-Métricas:
-  - exito:            ¿Encontró solución? (1 = sí, 0 = no)
-  - pasos:            Largo del camino encontrado
-  - tiempo_ms:        Tiempo de ejecución en milisegundos
-  - nodos_explorados: Cuántas celdas revisó (complejidad)
+Mide el rendimiento de cada agente y vemos: exito, largo del camino, tiempo y nodos visitados
 """
 
 import time
 
 
 def medir(agente_fn, laberinto):
-    """
-    Corre un agente sobre un laberinto y devuelve todas las métricas.
-    agente_fn: (bfs, astar, greedy)
-    laberinto: diccionario generado por benchmark.py
-    """
-    inicio = time.time()
+    t0 = time.time()
     resultado = agente_fn(laberinto)
-    fin = time.time()
+    t1 = time.time()
 
-    tiempo_ms = (fin - inicio) * 1000  # convertir a milisegundos
+    tiempo_ms = round((t1 - t0) * 1000, 4)
+
+    exito = 1 if resultado["exito"] else 0
+    pasos = len(resultado["camino"]) - 1 if resultado["exito"] else None
 
     return {
-        "exito":            1 if resultado["exito"] else 0,
-        "pasos":            len(resultado["camino"]) - 1 if resultado["exito"] else None,
-        "tiempo_ms":        round(tiempo_ms, 4),
+        "exito":            exito,
+        "pasos":            pasos,
+        "tiempo_ms":        tiempo_ms,
         "nodos_explorados": resultado["nodos_explorados"]
     }
